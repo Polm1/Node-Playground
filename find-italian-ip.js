@@ -7,13 +7,15 @@ const ipList = require("./MOCK_DATA.json");
 const matchingCriteria = { country: "Italy" };
 
 async function start() {
-  _.chunk(ipList, chunkSize).forEach(async chunk => {
+  const matchingIpPromises = _.chunk(ipList, chunkSize).map(async chunk => {
     const postData = preparePostData(chunk);
     const parsedIpList = await batchParse(postData);
-    const matchingIpList = parsedIpList.filter(
-      ip => ip.country === matchingCriteria.country
-    );
 
+    return parsedIpList.filter(ip => ip.country === matchingCriteria.country);
+  });
+
+  Promise.all(matchingIpPromises).then(results => {
+    const matchingIpList = _.flatten(results);
     console.log(matchingIpList);
     console.log(`Found ${matchingIpList.length} ip addresses from Italy`);
   });
