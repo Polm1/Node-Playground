@@ -1,41 +1,50 @@
-const axios = require("axios");
-const _ = require("lodash");
+const axios = require('axios');
+const _ = require('lodash');
+const ipList = require('./MOCK_DATA.json');
 
-const apiUrl = "http://ip-api.com/batch";
-const chunkSize = 100;
-const ipList = require("./MOCK_DATA.json");
-const matchingCriteria = { country: "Italy" };
+const _API_URL = 'http://ip-api.com/batch';
+const _CHUNK_SIZE = 100;
+const matchingCriteria = { country: 'Italy' };
 
 async function start() {
-  const matchingIpPromises = _.chunk(ipList, chunkSize).map(async chunk => {
-    const postData = preparePostData(chunk);
-    const parsedIpList = await batchParse(postData);
+	const matchingIpPromises = _.chunk(ipList, _CHUNK_SIZE).map(async chunk => {
+		const postData = preparePostData(chunk);
+		const parsedIpList = await batchParse(postData);
 
-    return parsedIpList.filter(ip => ip.country === matchingCriteria.country);
-  });
+		return parsedIpList.filter(ip => ip.country === matchingCriteria.country);
+	});
 
-  Promise.all(matchingIpPromises).then(results => {
-    const matchingIpList = _.flatten(results);
-    console.log(matchingIpList);
-    console.log(`Found ${matchingIpList.length} ip addresses from Italy`);
-  });
+	const matchingIpList = _.flatten(await Promise.all(matchingIpPromises));
+	checkResults(matchingIpList);
 }
 
 function preparePostData(slicedList) {
-  return slicedList.map(ip => {
-    return { query: ip.ip_address, fields: "country,query" };
-  });
+	return slicedList.map(ip => {
+		return { query: ip.ip_address, fields: 'country,query' };
+	});
 }
 
 function batchParse(ipList) {
-  return axios
-    .post(apiUrl, ipList)
-    .then(res => res.data)
-    .catch(err => console.error(err));
+	return axios
+		.post(_API_URL, ipList)
+		.then(res => res.data)
+		.catch(err => console.error(err));
+}
+
+function checkResults(matchingIpList) {
+	const results = matchingIpList.filter(
+		matchIp => matchIp.country === matchingCriteria.country
+	);
+
+	console.log(results);
+	console.log(
+		`Found ${results.length} ip addresses from ${matchingCriteria.country}`
+	);
 }
 
 start().catch(err => {
-  err.bootstrap = true;
-  console.error(err);
-  process.exit(1);
+	console.error(err);
+	process.exit(1);
 });
+
+process.on('exit', code => console.log(`Process terminated with code ${code}`));
